@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>트레일 계기판 · 만보기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --ink: #17201b;
+    --panel: #1f2b23;
+    --panel-2: #253328;
+    --paper: #eee7d6;
+    --paper-dim: #b9b2a0;
+    --moss: #7fa06f;
+    --moss-dim: #4c6045;
+    --brass: #c79a4b;
+    --rust: #b0553a;
+    --line: rgba(238,231,214,0.14);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body{
+    display:flex; justify-content:center;
+    min-height:100vh;
+    padding: 28px 16px 40px;
+  }
+
+  .app{
+    width:100%; max-width: 420px;
+    display:flex; flex-direction:column;
+    gap: 18px;
+  }
+
+  header{
+    display:flex; flex-direction:column; gap:2px;
+    padding: 0 4px;
+  }
+  header .kicker{
+    font-size: 12.5px; letter-spacing: 0.02em;
+    color: var(--moss); font-weight:600;
+  }
+  header h1{
+    margin:0; font-size: 22px; font-weight:700;
+    color: var(--paper); letter-spacing: -0.01em;
+  }
+
+  /* --- Level / tilt instrument --- */
+  .level-card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .level-card .label-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom: 10px;
+  }
+  .level-card .label-row .name{ font-size: 13px; color: var(--paper-dim); }
+  .level-card .label-row .deg{
+    font-family:'DM Mono', monospace; font-size: 14px; color: var(--paper);
+    font-variant-numeric: tabular-nums;
+  }
+  .level-track{
+    position: relative;
+    height: 46px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .level-track::before{
+    content:'';
+    position:absolute; left:50%; top:0; bottom:0; width:1px;
+    background: var(--line);
+  }
+  .level-bubble{
+    position:absolute; top:6px; bottom:6px;
+    width: 34px;
+    border-radius: 8px;
+    background: var(--moss-dim);
+    left: calc(50% - 17px);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .level-bubble.level-ok{ background: var(--moss); box-shadow: 0 0 0 2px rgba(127,160,111,0.25) inset; }
+  .level-bubble.level-off{ background: var(--rust); }
+
+  /* --- Odometer --- */
+  .odometer{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px 20px 24px;
+    text-align:center;
+  }
+  .odometer .count{
+    font-family: 'DM Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 64px; font-weight:500;
+    color: var(--paper);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .odometer .unit{
+    margin-top: 8px;
+    font-size: 13px; color: var(--paper-dim);
+    letter-spacing: 0.03em;
+  }
+  .odometer .status{
+    margin-top: 16px;
+    display:inline-flex; align-items:center; gap:7px;
+    font-size: 12.5px; color: var(--paper-dim);
+  }
+  .status .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--paper-dim);
+  }
+  .status.active .dot{ background: var(--moss); box-shadow: 0 0 0 3px rgba(127,160,111,0.2); }
+  .status.active { color: var(--moss); }
+
+  /* --- Stats row --- */
+  .stats{
+    display:grid; grid-template-columns: repeat(3,1fr);
+    gap: 10px;
+  }
+  .stat{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 10px;
+    text-align:center;
+  }
+  .stat .v{
+    font-family:'DM Mono', monospace; font-size: 19px; color: var(--paper);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .l{ margin-top:4px; font-size: 11px; color: var(--paper-dim); }
+
+  /* --- Controls --- */
+  .controls{ display:flex; gap: 10px; }
+  button{
+    flex:1;
+    border:none; border-radius: 12px;
+    padding: 15px 12px;
+    font-family:'Inter',sans-serif; font-size: 15px; font-weight:600;
+    cursor:pointer;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+  button:active{ transform: scale(0.97); }
+  .btn-primary{ background: var(--moss); color: #12190f; }
+  .btn-primary.stop{ background: var(--rust); color: #251510; }
+  .btn-ghost{
+    background: transparent; color: var(--paper-dim);
+    border: 1px solid var(--line);
+  }
+  button:disabled{ opacity: 0.4; cursor:not-allowed; }
+
+  .notice{
+    font-size: 12.5px; line-height:1.5; color: var(--paper-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .notice b{ color: var(--paper); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="kicker">TRAIL INSTRUMENT</div>
+    <h1>만보기 · 수평 센서</h1>
+  </header>
+
+  <div class="level-card">
+    <div class="label-row">
+      <span class="name">기울기 (좌우 수평)</span>
+      <span class="deg" id="tiltDeg">0.0°</span>
+    </div>
+    <div class="level-track">
+      <div class="level-bubble" id="bubble"></div>
+    </div>
+  </div>
+
+  <div class="odometer">
+    <div class="count" id="stepCount">0</div>
+    <div class="unit">걸음</div>
+    <div class="status" id="statusPill">
+      <span class="dot"></span>
+      <span id="statusText">대기 중</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="v" id="distanceVal">0.00</div>
+      <div class="l">거리 (km)</div>
+    </div>
+    <div class="stat">
+      <div class="v" id="paceVal">0</div>
+      <div class="l">분당 걸음</div>
+    </div>
+    <div class="stat">
+      <div class="v" id="calVal">0</div>
+      <div class="l">칼로리 (kcal)</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-primary" id="mainBtn">측정 시작</button>
+    <button class="btn-ghost" id="resetBtn">초기화</button>
+  </div>
+
+  <div class="notice" id="notice">
+    <b>안내.</b> 이 기능은 휴대폰의 가속도·기울기 센서를 사용하므로 모바일 브라우저에서, 걸을 때 휴대폰을 손이나 주머니에 지닌 상태로 사용해야 정확합니다. iOS의 경우 처음 시작할 때 센서 접근 권한을 한 번 허용해야 합니다.
+  </div>
+</div>
+
+<script>
+(function(){
+  const stepCountEl = document.getElementById('stepCount');
+  const statusPill = document.getElementById('statusPill');
+  const statusText = document.getElementById('statusText');
+  const mainBtn = document.getElementById('mainBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const bubble = document.getElementById('bubble');
+  const tiltDeg = document.getElementById('tiltDeg');
+  const distanceVal = document.getElementById('distanceVal');
+  const paceVal = document.getElementById('paceVal');
+  const calVal = document.getElementById('calVal');
+  const notice = document.getElementById('notice');
+
+  const STRIDE_M = 0.78;       // 평균 보폭(m) 추정치
+  const KCAL_PER_STEP = 0.04;  // 걸음당 대략적인 칼로리 추정치
+  const STEP_THRESHOLD = 1.75; // 가속도 피크 감지 임계값 (높을수록 둔감)
+  const MIN_STEP_INTERVAL = 330; // ms, 중복 카운트 방지
+
+  let steps = 0;
+  let tracking = false;
+  let lastStepTime = 0;
+  let recentTimestamps = [];
+  let todayKey = 'steps:' + new Date().toISOString().slice(0,10);
+
+  // 고역통과 필터용 저역 성분 추정치
+  let gravity = { x: 0, y: 0, z: 9.8 };
+
+  function render(){
+    stepCountEl.textContent = steps.toLocaleString('ko-KR');
+    const km = (steps * STRIDE_M) / 1000;
+    distanceVal.textContent = km.toFixed(2);
+    calVal.textContent = Math.round(steps * KCAL_PER_STEP).toLocaleString('ko-KR');
+
+    const now = Date.now();
+    recentTimestamps = recentTimestamps.filter(t => now - t <= 60000);
+    paceVal.textContent = recentTimestamps.length;
+  }
+
+  function setStatus(active, text){
+    statusText.textContent = text;
+    statusPill.classList.toggle('active', active);
+  }
+
+  async function loadToday(){
+    try{
+      const res = await window.storage.get(todayKey);
+      if(res && res.value){
+        const data = JSON.parse(res.value);
+        if(typeof data.steps === 'number'){
+          steps = data.steps;
+          render();
+        }
+      }
+    }catch(e){ /* 저장된 값 없음 - 0에서 시작 */ }
+  }
+
+  let saveTimer = null;
+  function scheduleSave(){
+    if(saveTimer) return;
+    saveTimer = setTimeout(async () => {
+      saveTimer = null;
+      try{
+        await window.storage.set(todayKey, JSON.stringify({ steps: steps, updatedAt: Date.now() }));
+      }catch(e){ console.error('저장 실패', e); }
+    }, 2500);
+  }
+
+  function handleMotion(e){
+    const a = e.accelerationIncludingGravity || e.acceleration;
+    if(!a || a.x === null) return;
+
+    const alpha = 0.85; // 저역통과 필터 계수
+    gravity.x = alpha * gravity.x + (1 - alpha) * a.x;
+    gravity.y = alpha * gravity.y + (1 - alpha) * a.y;
+    gravity.z = alpha * gravity.z + (1 - alpha) * a.z;
+
+    const linX = a.x - gravity.x;
+    const linY = a.y - gravity.y;
+    const linZ = a.z - gravity.z;
+    const magnitude = Math.sqrt(linX*linX + linY*linY + linZ*linZ);
+
+    const now = Date.now();
+    if(magnitude > STEP_THRESHOLD && (now - lastStepTime) > MIN_STEP_INTERVAL){
+      lastStepTime = now;
+      steps += 1;
+      recentTimestamps.push(now);
+      render();
+      scheduleSave();
+    }
+  }
+
+  function handleOrientation(e){
+    // gamma: 좌우 기울기(-90~90), 수평 감지에 사용
+    let gamma = e.gamma;
+    if(gamma === null || gamma === undefined) return;
+    gamma = Math.max(-45, Math.min(45, gamma));
+    tiltDeg.textContent = gamma.toFixed(1) + '°';
+
+    const pct = (gamma + 45) / 90; // 0~1
+    const trackWidth = bubble.parentElement.clientWidth;
+    const bubbleWidth = bubble.clientWidth;
+    const x = pct * (trackWidth - bubbleWidth);
+    bubble.style.left = x + 'px';
+
+    const level = Math.abs(gamma) < 4;
+    const tilted = Math.abs(gamma) > 20;
+    bubble.classList.toggle('level-ok', level);
+    bubble.classList.toggle('level-off', tilted);
+  }
+
+  async function requestPermissions(){
+    let motionOk = true, orientationOk = true;
+
+    if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
+      try{
+        const res = await DeviceMotionEvent.requestPermission();
+        motionOk = (res === 'granted');
+      }catch(e){ motionOk = false; }
+    }
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      try{
+        const res = await DeviceOrientationEvent.requestPermission();
+        orientationOk = (res === 'granted');
+      }catch(e){ orientationOk = false; }
+    }
+    return motionOk && orientationOk;
+  }
+
+  function startTracking(){
+    window.addEventListener('devicemotion', handleMotion, true);
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    tracking = true;
+    mainBtn.textContent = '측정 정지';
+    mainBtn.classList.add('stop');
+    setStatus(true, '측정 중');
+  }
+
+  function stopTracking(){
+    window.removeEventListener('devicemotion', handleMotion, true);
+    window.removeEventListener('deviceorientation', handleOrientation, true);
+    tracking = false;
+    mainBtn.textContent = '측정 시작';
+    mainBtn.classList.remove('stop');
+    setStatus(false, '일시 정지');
+    if(saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+    window.storage.set(todayKey, JSON.stringify({ steps: steps, updatedAt: Date.now() })).catch(()=>{});
+  }
+
+  mainBtn.addEventListener('click', async () => {
+    if(tracking){
+      stopTracking();
+      return;
+    }
+
+    const hasMotionAPI = typeof DeviceMotionEvent !== 'undefined';
+    if(!hasMotionAPI){
+      notice.innerHTML = '<b>지원되지 않음.</b> 이 브라우저·기기는 가속도 센서 접근을 지원하지 않습니다. 모바일 브라우저에서 다시 시도해 주세요.';
+      return;
+    }
+
+    mainBtn.disabled = true;
+    const granted = await requestPermissions();
+    mainBtn.disabled = false;
+
+    if(!granted){
+      notice.innerHTML = '<b>권한 필요.</b> 센서 접근 권한이 허용되지 않았습니다. 브라우저 설정에서 동작 및 방향 센서 접근을 허용한 뒤 다시 시도해 주세요.';
+      return;
+    }
+    startTracking();
+  });
+
+  resetBtn.addEventListener('click', async () => {
+    steps = 0;
+    recentTimestamps = [];
+    render();
+    try{ await window.storage.set(todayKey, JSON.stringify({ steps: 0, updatedAt: Date.now() })); }catch(e){}
+  });
+
+  loadToday();
+  render();
+})();
+</script>
+
+</body>
+</html>
